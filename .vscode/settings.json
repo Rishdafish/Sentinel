@@ -6,6 +6,6 @@
       "**/data": true,
       "**/.DS_Store": true,
       ".gitignore" : false,
-      "**/SentinelVenv": true
+      "**/SentinelVenv": false
     }
   }
