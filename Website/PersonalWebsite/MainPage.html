@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Background Image</title>
+
+  <!-- Cinzel 700 (≈ Trona Bold) -->
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@700&display=swap" rel="stylesheet">
+  <style>
+    @font-face {
+  font-family: 'Fancy';
+  src: url('assets/TrajanusRoman-6aEq.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+    /* full-screen painted backdrop */
+    html, body {
+      margin: 0;
+      height: 100%;
+    }
+    body {
+      background: url('assets/54444979153_faaac45c6a_o.jpg')
+                  center/cover no-repeat;
+    }
+
+    /* your logo at top-left */
+    .logo {
+      position: absolute;
+      top: 1.75rem;
+       left : 2rem;
+      height: 4rem;
+    }
+
+    .site-title {
+      position: absolute;
+      top: 1.65rem;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: 'Fancy', 'Cormorant Garamond', serif;
+      font-size: 1.5vw;
+      color: white;
+      white-space: nowrap;
+    }
+
+    .main-left-text {
+      position: absolute;
+      bottom: 4rem;
+      left: 3rem;
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 6vw;
+      font-weight: 700;
+      line-height: 1.1;
+      color: white;
+      text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.4);
+      max-width: 40%;
+    }
+
+    /* responsive tweaks under 600px */
+    @media (max-width: 600px) {
+      .logo {
+        height: 3.5rem;
+      }
+      .site-title {
+        font-size: 1rem;
+      }
+      .top-right-text {
+        top: 2rem;
+        right: 1rem;
+        font-size: 1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <span class="top-right-text"></span>
+  <span class="site-title"></span>
+  <div class="main-left-text">
+    Building AI<br>For Scientific Discovery
+  </div>
+</body>
+</html>
+
+
+

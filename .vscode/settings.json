@@ -1,0 +1,11 @@
+{
+    "files.exclude": {
+      "**/node_modules": true,
+      "**/__pycache__": true,
+      "**/*.log": true,
+      "**/data": true,
+      "**/.DS_Store": true,
+      ".gitignore" : true,
+      "**/SentinelVenv": false
+    }
+  }
