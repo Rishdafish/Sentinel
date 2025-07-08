@@ -5,7 +5,7 @@
       "**/*.log": true,
       "**/data": true,
       "**/.DS_Store": true,
-      ".gitignore" : true,
-      "**/SentinelVenv": false
+      ".gitignore" : false,
+      "**/SentinelVenv": true
     }
   }
