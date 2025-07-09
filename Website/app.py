@@ -9,6 +9,11 @@ PIN_CODE = "1234"
 def home():
     return render_template("MainPage.html")
 
+@app.route('/projects')
+def GetProjectPage():
+    print('ka;sdlf')
+    return render_template("Projects.html")
+
 @app.route('/access', methods=['GET', 'POST'])
 def access():
     if request.method == 'POST':
