@@ -79,6 +79,9 @@ body {
     width: 44px;
     height: 44px;
     padding: 0;
+    line-height: 0;
+
+
 }
 
 .menu-button:hover {
@@ -86,8 +89,13 @@ body {
 }
 
 .menu-icon {
-    width: 20px;
-    height: 20px;
+    position: absolute;
+    top:  50%;
+    left: 50%;
+    transform: translate(-50%, -40%);
+    
+
+
     fill: #4a4040;
     transition: fill 0.3s ease;
 }
