@@ -62,6 +62,10 @@ class WebSite():
     def changeProjectInfo(self, projectID : int, newProjectName: str, newProjectDescription: str, newEndDate: List[int], newProjectGithub: str, newProjectStatus: str, newProjectTech: str):
         for project in self.Projects:
             if project["id"] == projectID:
+                if self.currProject["id"] == projectID and newProjectStatus == "Completed":
+                    self.currProject = None
+                    self.coins += 100
+                
                 project["name"] = newProjectName
                 project["description"] = newProjectDescription
                 project["endDate"] = newEndDate
@@ -84,7 +88,3 @@ class WebSite():
 
 
         
-
-
-
-print(time.ctime())
