@@ -1,5 +1,4 @@
 
-
 class llmCall:
     @staticmethod
     def call(prompt): 
