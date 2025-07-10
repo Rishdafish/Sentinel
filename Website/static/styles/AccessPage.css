@@ -1,10 +1,54 @@
+
+/* --- Base & Typography --- */
 body {
     font-family: 'Inter', sans-serif;
+    background-color: #121212; /* Very dark gray background */
 }
-/* Simple transition for form visibility */
+
+/* --- Layout Containers --- */
+.page-container {
+    display: flex;
+    width: 100%;
+    min-height: 100vh;
+}
+
+.image-panel {
+    background-color: #000;
+    background-image: url('/static/Images/John_Martin_-_The_Great_Day_of_His_Wrath_-_Google_Art_Project.jpg');
+    background-size: cover;
+    background-position: center;
+}
+
+.form-panel {
+    background-color: #1E1E1E; /* Dark form background */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    padding: 2rem;
+}
+
+@media (min-width: 768px) {
+    .image-panel {
+        display: flex;
+        width: 60%; /* 3/5 of the screen */
+    }
+    .form-panel {
+        width: 40%; /* 2/5 of the screen */
+        padding: 3.5rem;
+    }
+}
+
+.form-wrapper {
+    width: 100%;
+    max-width: 28rem;
+}
+
+/* --- Form Visibility --- */
 .form-container {
     transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
-    width: 100%; /* Ensure container takes full width of its parent */
+    width: 100%;
 }
 .form-hidden {
     opacity: 0;
@@ -18,12 +62,125 @@ body {
     position: static;
 }
 
-/* BACKGROUND IMAGE: To set a background image for the left panel, 
-add your image URL inside the parentheses below. For example:
-background-image: url('https://placehold.co/1200x800/000000/FFFFFF?text=Your+Image');
-*/
-.background-image-panel {
-    background-image: url('/static/Images/John_Martin_-_The_Great_Day_of_His_Wrath_-_Google_Art_Project.jpg');
-    background-size: cover;
-    background-position: center;
+/* --- Form Elements --- */
+.form-title {
+    font-size: 1.875rem;
+    line-height: 2.25rem;
+    font-weight: 700;
+    color: #f9fafb; /* Off-white */
+}
+
+.form-fieldset {
+    margin-top: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.login-fieldset {
+     margin-top: 2.5rem;
+     margin-bottom: 2.5rem;
+}
+
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    font-weight: 500;
+    color: #d1d5db; /* Light gray */
+}
+
+.form-label-optional {
+    color: #6b7280; /* Muted gray for optional text */
+}
+
+.form-input {
+    width: 100%;
+    padding: 0.75rem;
+    background-color: #374151; /* Darker input background */
+    border: 1px solid #4b5563;
+    border-radius: 0.5rem;
+    color: #f9fafb;
+}
+
+.form-input::placeholder {
+    color: #9ca3af;
+}
+
+.form-input:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px #9ca3af; /* Whiteish focus ring */
+}
+
+.password-wrapper {
+    position: relative;
+}
+
+.password-toggle {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    padding-left: 1rem;
+    padding-right: 1rem;
+    color: #9ca3af;
+    cursor: pointer;
+}
+
+.password-toggle:hover {
+    color: #e5e7eb;
+}
+
+.password-toggle .icon {
+    width: 1.25rem;
+    height: 1.25rem;
+    stroke: currentColor;
+}
+
+.hidden {
+    display: none;
+}
+
+/* --- Buttons & Links --- */
+.btn {
+    width: 100%;
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+    font-weight: 500;
+    border-radius: 0.5rem;
+    transition: background-color 0.2s ease-in-out;
+    color: #111827; /* Dark text for light button */
+    background-color: #f3f4f5; /* Off-white button */
+}
+
+.btn:hover {
+    background-color: #d1d5db; /* Slightly darker on hover */
+}
+
+.btn:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px #1E1E1E, 0 0 0 4px #9ca3af; /* Offset whiteish ring */
+}
+
+.form-footer-text {
+    margin-top: 1.5rem;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    text-align: center;
+    color: #9ca3af;
+}
+
+.form-footer-link {
+    font-weight: 500;
+    color: #d1d5db; /* Light gray link */
+    text-decoration: none;
+}
+
+.form-footer-link:hover {
+    text-decoration: underline;
 }
