@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Projects</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles/ProjectPage.css') }}">
+</head>
+<body>
+
+    <div class="projects-page">
+        <div class="projects-container">
+            <div class="projects-header">
+                <h1 class="projects-title">My Projects</h1>
+                <p class="projects-subtitle">A collection of my work in software development, AI, and blockchain technology</p>
+            </div>
+            <div class="projects-grid" id="projects-grid"></div>
+        </div>
+    </div>
+
+    <button class="add-project-btn" id="add-project-btn" title="Add New Project">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+    </button>
+
+    <!-- Project Creation/Edit Modal -->
+    <div class="modal-overlay" id="project-modal">
+        <div class="modal-content">
+            <button class="close-button" id="close-modal-btn" title="Close">&times;</button>
+            <h2 id="modal-title">Create New Project</h2>
+            <form class="project-form" id="project-form">
+                <div class="form-group"><label for="title" class="form-label">Project Title</label><input type="text" id="title" class="form-input" placeholder="Enter a project title" required></div>
+                <div class="form-group"><label for="description" class="form-label">Description</label><textarea id="description" class="form-textarea" rows="4" placeholder="Describe your project" required></textarea></div>
+                <div class="form-group">
+                    <label for="technologies-input" class="form-label">Technologies (press Enter to add)</label>
+                    <div class="tags-input-container" id="tags-input-container">
+                        <input type="text" id="technologies-input" placeholder="e.g., Python">
+                    </div>
+                </div>
+                <div class="form-group"><label for="githubUrl" class="form-label">GitHub URL (Optional)</label><input type="url" id="githubUrl" class="form-input" placeholder="https://github.com/user/repo"></div>
+                <div class="form-group"><label for="liveDemoUrl" class="form-label">Live Demo URL (Optional)</label><input type="url" id="liveDemoUrl" class="form-input" placeholder="https://my-project.com"></div>
+                <div class="form-group"><label for="status" class="form-label">Status</label><select id="status" class="form-select" required><option value="Planning">Planning</option><option value="Developing">Developing</option><option value="Active">Active</option><option value="Completed">Completed</option></select></div>
+                <div class="form-group"><label for="endDate" class="form-label">End Date</label><input type="date" id="endDate" class="form-input" required></div>
+                <div class="form-buttons"><button type="button" class="form-button secondary" id="cancel-btn">Cancel</button><button type="submit" class="form-button primary" id="save-btn">Save Project</button></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div class="modal-overlay" id="confirm-modal">
+        <div class="modal-content">
+            <h2 id="confirm-modal-title">Are you sure?</h2>
+            <p id="confirm-modal-text">This action cannot be undone.</p>
+            <div id="confirm-modal-buttons">
+                <button class="form-button secondary" id="confirm-btn-cancel">Cancel</button>
+                <button class="form-button" id="confirm-btn-ok">Delete</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DATA ---
+            const initialProjects = [
+                { id: '1', title: 'Dobsonian Telescope', endDate: '2024-02-21', description: 'Built with Tejash Gupta, worked on the primary base. Won local tech comp with it.', technologies: ['C++', 'WoodWorking'], status: 'Completed', githubUrl: 'https://github.com', liveDemoUrl: '' },
+                { id: '2', title: 'Sentinel', endDate: '2025-06-30', description: 'Monitoring web usage/focus tracker to improve the number of hours worked. Implements Raspberry Pi with dedicated AI tracking of the body, to ensure maximum productivity.', technologies: ['Python', 'Raspberry Pi'], status: 'Developing', githubUrl: '', liveDemoUrl: 'https://example.com' },
+                { id: '3', title: 'Anroy', endDate: '2025-06-29', description: 'Builds on top of Pegasus, essentiallurity for AI companies and their models with essentially asking all the types of questions to break the model. Also could be used for general cybersecurity.', technologies: ['Python'], status: 'Planning', githubUrl: 'https://github.com', liveDemoUrl: 'https://example.com' },
+            ];
+
+            let projects = [...initialProjects];
+            let editingProjectId = null;
+            let currentTechTags = [];
+
+            // --- DOM ELEMENTS ---
+            const projectsGrid = document.getElementById('projects-grid');
+            const addProjectBtn = document.getElementById('add-project-btn');
+            const projectModal = document.getElementById('project-modal');
+            const modalTitle = document.getElementById('modal-title');
+            const closeModalBtn = document.getElementById('close-modal-btn');
+            const cancelBtn = document.getElementById('cancel-btn');
+            const projectForm = document.getElementById('project-form');
+            const tagsInputContainer = document.getElementById('tags-input-container');
+            const techInput = document.getElementById('technologies-input');
+
+            // Confirmation Modal Elements
+            const confirmModal = document.getElementById('confirm-modal');
+            const confirmBtnOk = document.getElementById('confirm-btn-ok');
+            const confirmBtnCancel = document.getElementById('confirm-btn-cancel');
+            let confirmCallback = null;
+
+
+            // --- FUNCTIONS ---
+            const formatDate = (dateString) => new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' });
+            const getStatusClass = (status) => `status-${status.toLowerCase()}`;
+            
+            const renderProjects = () => {
+                const expandedId = document.querySelector('.project-card.expanded')?.dataset.id;
+                projectsGrid.innerHTML = ''; 
+                projects.forEach((project, index) => {
+                    const card = document.createElement('div');
+                    card.className = 'project-card';
+                    if (project.id === expandedId) {
+                        card.classList.add('expanded');
+                    }
+                    card.style.animationDelay = `${index * 100}ms`;
+                    card.dataset.id = project.id;
+
+                    const technologiesHTML = project.technologies.map(tech => `<span class="tech-tag">${tech}</span>`).join('');
+                    
+                    let linksHTML = '';
+                    if (project.githubUrl) {
+                        linksHTML += `<a href="${project.githubUrl}" target="_blank" rel="noopener noreferrer" class="project-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg><span>Source Code</span></a>`;
+                    }
+                    if (project.liveDemoUrl) {
+                        linksHTML += `<a href="${project.liveDemoUrl}" target="_blank" rel="noopener noreferrer" class="project-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg><span>Live Demo</span></a>`;
+                    }
+
+                    card.innerHTML = `
+                        <div class="project-header">
+                            <div class="project-title-section">
+                                <h3 class="project-title">${project.title}</h3>
+                                <div class="project-date">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                                    <span>${formatDate(project.endDate)}</span>
+                                </div>
+                            </div>
+                            <div class="project-status-container">
+                                <span class="project-status ${getStatusClass(project.status)}">${project.status}</span>
+                                <div class="project-actions">
+                                    <button class="action-btn edit-btn" title="Edit Project"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg></button>
+                                    <button class="action-btn delete-btn" title="Delete Project"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="project-description">${project.description}</p>
+                        <div class="project-tech">${technologiesHTML}</div>
+                        <div class="project-details">
+                            <div class="project-links">${linksHTML}</div>
+                        </div>
+                    `;
+                    projectsGrid.appendChild(card);
+                });
+            };
+
+            // --- Tag Input Functions ---
+            const renderTags = () => {
+                // Clear existing tags except for the input itself
+                tagsInputContainer.querySelectorAll('.tag-item').forEach(tagEl => tagEl.remove());
+                currentTechTags.forEach(tag => {
+                    const tagEl = document.createElement('span');
+                    tagEl.className = 'tag-item';
+                    tagEl.textContent = tag;
+                    const removeBtn = document.createElement('button');
+                    removeBtn.className = 'tag-remove';
+                    removeBtn.innerHTML = '&times;';
+                    removeBtn.onclick = () => {
+                        currentTechTags = currentTechTags.filter(t => t !== tag);
+                        renderTags();
+                    };
+                    tagEl.appendChild(removeBtn);
+                    tagsInputContainer.insertBefore(tagEl, techInput);
+                });
+            };
+
+            const addTag = (tag) => {
+                if (tag && !currentTechTags.includes(tag)) {
+                    currentTechTags.push(tag);
+                    renderTags();
+                }
+                techInput.value = '';
+            };
+
+            // --- Modal Functions ---
+            const showModal = (isEditing = false) => {
+                projectForm.reset();
+                currentTechTags = [];
+                renderTags();
+                modalTitle.textContent = isEditing ? 'Edit Project' : 'Create New Project';
+                editingProjectId = isEditing ? editingProjectId : null;
+                projectModal.classList.add('visible');
+            };
+            const hideModal = () => {
+                projectModal.classList.remove('visible');
+                editingProjectId = null;
+            };
+
+            // --- Confirmation Modal Functions ---
+            const showConfirmModal = (onConfirm) => {
+                confirmCallback = onConfirm;
+                confirmModal.classList.add('visible');
+            };
+            const hideConfirmModal = () => {
+                confirmModal.classList.remove('visible');
+                confirmCallback = null;
+            };
+
+            // --- Event Handlers ---
+            const handleFormSubmit = (e) => {
+                e.preventDefault();
+                const projectData = {
+                    title: document.getElementById('title').value.trim(),
+                    description: document.getElementById('description').value.trim(),
+                    technologies: [...currentTechTags],
+                    status: document.getElementById('status').value,
+                    endDate: document.getElementById('endDate').value,
+                    githubUrl: document.getElementById('githubUrl').value.trim(),
+                    liveDemoUrl: document.getElementById('liveDemoUrl').value.trim(),
+                };
+
+                if (editingProjectId) {
+                    const projectIndex = projects.findIndex(p => p.id === editingProjectId);
+                    if (projectIndex > -1) projects[projectIndex] = { ...projects[projectIndex], ...projectData };
+                } else {
+                    projects.unshift({ id: crypto.randomUUID(), ...projectData });
+                }
+                renderProjects();
+                hideModal();
+            };
+            
+            const handleGridClick = (e) => {
+                const card = e.target.closest('.project-card');
+                if (!card) return;
+
+                const projectId = card.dataset.id;
+                const isActionBtn = e.target.closest('.action-btn');
+
+                if (isActionBtn) {
+                    e.stopPropagation(); // Prevent card expansion when clicking action buttons
+                    if (e.target.closest('.edit-btn')) {
+                        editingProjectId = projectId;
+                        const project = projects.find(p => p.id === projectId);
+                        if (project) {
+                            document.getElementById('title').value = project.title;
+                            document.getElementById('description').value = project.description;
+                            currentTechTags = [...project.technologies];
+                            renderTags();
+                            document.getElementById('status').value = project.status;
+                            document.getElementById('endDate').value = project.endDate;
+                            document.getElementById('githubUrl').value = project.githubUrl;
+                            document.getElementById('liveDemoUrl').value = project.liveDemoUrl;
+                            showModal(true);
+                        }
+                    } else if (e.target.closest('.delete-btn')) {
+                        showConfirmModal(() => {
+                            projects = projects.filter(p => p.id !== projectId);
+                            renderProjects();
+                        });
+                    }
+                } else {
+                    // Toggle expansion
+                    const isExpanded = card.classList.contains('expanded');
+                    document.querySelectorAll('.project-card.expanded').forEach(c => c.classList.remove('expanded'));
+                    if (!isExpanded) {
+                        card.classList.add('expanded');
+                    }
+                }
+            };
+
+            // --- EVENT LISTENERS ---
+            addProjectBtn.addEventListener('click', () => showModal(false));
+            closeModalBtn.addEventListener('click', hideModal);
+            cancelBtn.addEventListener('click', hideModal);
+            projectForm.addEventListener('submit', handleFormSubmit);
+            projectsGrid.addEventListener('click', handleGridClick);
+            projectModal.addEventListener('click', (e) => { if (e.target === projectModal) hideModal(); });
+            document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { hideModal(); hideConfirmModal(); } });
+            
+            // Tag input listener
+            techInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addTag(techInput.value.trim());
+                }
+            });
+
+            // Confirmation modal listeners
+            confirmBtnCancel.addEventListener('click', hideConfirmModal);
+            confirmBtnOk.addEventListener('click', () => {
+                if (confirmCallback) confirmCallback();
+                hideConfirmModal();
+            });
+
+            // --- INITIAL RENDER ---
+            renderProjects();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,29 @@
+body {
+    font-family: 'Inter', sans-serif;
+}
+/* Simple transition for form visibility */
+.form-container {
+    transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+    width: 100%; /* Ensure container takes full width of its parent */
+}
+.form-hidden {
+    opacity: 0;
+    transform: scale(0.95);
+    position: absolute;
+    pointer-events: none;
+}
+.form-visible {
+    opacity: 1;
+    transform: scale(1);
+    position: static;
+}
+
+/* BACKGROUND IMAGE: To set a background image for the left panel, 
+add your image URL inside the parentheses below. For example:
+background-image: url('https://placehold.co/1200x800/000000/FFFFFF?text=Your+Image');
+*/
+.background-image-panel {
+    background-image: url('/static/Images/John_Martin_-_The_Great_Day_of_His_Wrath_-_Google_Art_Project.jpg');
+    background-size: cover;
+    background-position: center;
+}
