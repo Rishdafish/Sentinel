@@ -1,7 +1,10 @@
+import datetime
+from typing import List
+import os
 from werkzeug.security import check_password_hash, generate_password_hash
 import asyncio 
 import json
-from flask import Flask, render_template, request, session, redirect, url_for, flash, current_app
+from flask import Flask, render_template, request, session, redirect, url_for, flash, current_app, jsonify, request, abort
 from flask_login import (
     LoginManager,
     UserMixin,
@@ -15,14 +18,14 @@ from google.cloud import storage
 from datetime import timedelta
 import re
 
+
 app = Flask(__name__)
 app.secret_key = 'oj;kwfoaenv;kjjak;sdjk;ltj;lk23j4;lk23jl4kj1lkfdjl;k1j3kt89c0vasdfuio01'
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = "/loginPage"
 login_manager.session_protection = "basic"
-
-
+TOKEN = os.environ.get("WEBSITE_TOKEN_VALUE")
 
 def upload_file(bucket_name: str, destination_blob_name: str, source_file_path: str):
     client = storage.Client()
@@ -47,14 +50,26 @@ def upload_json(bucket_name: str, destination_blob_name: str, data: dict):
     print(f"Uploaded JSON to gs://{bucket_name}/{destination_blob_name}")
 
 
+#The folder format should be like xyz/
+def getAllDir(folder: str) -> List[dict]:
+    client = storage.Client()
+    bucket = client.bucket('data_for_website')
+    blobs = bucket.list_blobs(prefix = folder)
+    items = []
+    for blob in blobs:
+        raw = blob.download_as_text()
+        data = json.load(raw)
+        items.append(data)
+    return items
+
 class User(UserMixin):
     def __init__(self, emailID: str, password: str, token = None):
          self.id = emailID.lower().strip()
          self.Password = password
-         self.token = token
-
-    def getPassword(self):
-        return self.Password
+         if token == TOKEN:
+            self.role = "admin"
+         else: 
+            self.role = 'standard'
 
     @classmethod
     def get(cls, email: str):
@@ -138,14 +153,51 @@ def register():
             flash("Account created! You can now log in.", "success")
             user = User(emailID=formEmail, password=formPassword, token=formToken)
             flask_login.login_user(user, remember=True, duration=(timedelta(days=365)))
-            return redirect(url_for('login'))
+            return redirect(url_for('home'))
         except Exception as e: 
             current_app.logger.error(f"Failed to upload user blob: {e}")
             print('Exception Error ')
             flash("Oops, something went wrong when creating your account. Please try again.", "danger")
     else: 
         return render_template('Access.html')
+    
+@app.route('/getAllProjects', methods = ['GET'])
+def getAllProjects():
+    return jsonify(getAllDir('Projects/'))
 
+
+@app.route('/api/projects', methods=['POST'])
+@login_required
+def add_project():
+    # 2) Validate the fields you need
+    title= request.form.get('Title').strip()
+    description= request.form.get('Description').strip()
+    tags= request.form.get('tags',[])
+    tags = [tag.strip() for tag in tags]
+    Github= request.form.get('Github').strip()
+    progression= request.form.get('progression').strip()
+    imageFiles = request.files.get('images')
+
+
+    filename = f"Projects/{title.replace(' ','_').lower()}.json"
+    payload = {
+        "title": title,
+        "description": description,
+        "created_by": current_user.get_id(),    # track who added it
+        "created_at": datetime.utcnow().isoformat() + "Z"
+    }
+    try:
+        upload_json(
+            bucket_name='data_for_website',
+            destination_blob_name=filename,
+            data=payload
+        )
+    except Exception as e:
+        current_app.logger.error(f"Failed to save project: {e}")
+        return abort(500, "Could not save project")
+
+    # 5) Return success (201 Created)
+    return jsonify(payload), 201
 
 @app.route('/')
 def home():
