@@ -259,6 +259,54 @@ def delete_project():
     
     return jsonify({"message": "Project deleted successfully"})
 
+@app.route('/api/addQuote', methods=['POST'])
+def addQuote()
+    quote = request.form.get("quote","").strip()
+    author = request.form.get("author","").strip()
+    if not quote or not author:
+        return jsonify({"error": "Quote and author are required"}), 400
+    quote_id = str(uuid.uuid4())
+    quote_data = {
+        "id": quote_id,
+        "quote": quote,
+        "author": author
+    }
+    upload_json(bucket_name="data_for_website", destination_blob_name=f"Quotes/{quote_id}.json", data=quote_data)
+    return jsonify({"message": "Quote added successfully", "id": quote_id})
+
+@app.route('/api/getQuotes', methods=['GET'])
+def getQuotes():
+    quotes = getAllDir('Quotes/')
+    return jsonify(quotes)
+
+@app.route('/api/deleteQuote', methods=['POST'])
+def deleteQuote():
+    quote_id = request.form.get("id", "").strip()
+    if not quote_id:
+        return jsonify({"error": "Quote ID is required"}), 400
+    deleteBlob(bucket_name="data_for_website", blob_name=f"Quotes/{quote_id}.json")
+    return jsonify({"message": "Quote deleted successfully"})
+
+@app.route('/api/changeQuote', methods=['POST'])
+def changeQuote():
+    quote_id = request.form.get("id", "").strip()
+    quote = request.form.get("quote", "").strip()
+    author = request.form.get("author", "").strip()
+
+    if not quote_id:
+        return jsonify({"error": "Quote ID is required"}), 400
+
+    quote_data = {
+        "id": quote_id,
+        "quote": quote,
+        "author": author
+    }
+    
+    upload_json(bucket_name="data_for_website", destination_blob_name=f"Quotes/{quote_id}.json", data=quote_data)
+    
+    return jsonify({"message": "Quote updated successfully"})
+
+
 @app.route('/')
 def home():
     return render_template("MainPage.html")
