@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>Favourite Quotes</title>
+
+  <!-- fonts / css -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles/QuotesPage.css') }}">
+
+  <!-- feather icons -->
+  <script defer src="https://unpkg.com/feather-icons"></script>
+</head>
+<body>
+
+<!--────────────── minimalist “home” link ──────────────-->
+<a href="{{ url_for('home') }}" class="home-link" title="Home">
+  <i data-feather="home"></i>
+</a>
+
+<!--────────────── page header (no subtitle) ───────────-->
+<h1 class="page-title">Quotes</h1>
+
+<!--────────────── grid container ──────────────────────-->
+<div id="quotes-grid" class="projects-grid"></div>
+
+{% if current_user.role == 'admin' %}
+<button id="add-quote-btn" class="add-project-btn" title="Add Quote">
+  <i data-feather="plus"></i>
+</button>
+{% endif %}
+
+<!--────────────── quote modal ─────────────────────────-->
+<div id="quote-modal" class="modal-overlay">
+  <div class="modal-content">
+    <button id="close-modal-btn" class="close-button">&times;</button>
+    <h2 id="modal-title">Add Quote</h2>
+
+    <form id="quote-form" class="project-form">
+      <input type="hidden" id="quote-id" />
+      <div class="form-group">
+        <label class="form-label" for="quote">Quote</label>
+        <textarea id="quote"
+          name="quote"               
+          class="form-textarea"
+          rows="3"
+          placeholder="“The unexamined life is not worth living.”"
+          required></textarea>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="author">Author</label>
+        <input id="author"
+       name="author"                  
+       class="form-input"
+       placeholder="Socrates"
+       required />
+      </div>
+
+      <div class="form-buttons">
+        <button id="cancel-btn" type="button" class="form-button secondary">Cancel</button>
+        <button type="submit" class="form-button primary">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!--────────────── confirm modal ───────────────────────-->
+<div id="confirm-modal" class="modal-overlay">
+  <div class="modal-content">
+    <h2>Delete quote?</h2>
+    <p>This cannot be undone.</p>
+    <div class="form-buttons">
+      <button id="confirm-cancel" class="form-button secondary">Cancel</button>
+      <button id="confirm-ok" class="form-button danger">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!--────────────── main script ─────────────────────────-->
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  /* refs */
+  const grid      = document.getElementById('quotes-grid');
+  const addBtn    = document.getElementById('add-quote-btn');
+  const modal     = document.getElementById('quote-modal');
+  const confirmM  = document.getElementById('confirm-modal');
+  const form      = document.getElementById('quote-form');
+  const closeBtn  = document.getElementById('close-modal-btn');
+
+  /* jinja-injected flag */
+const isAdmin   = {{ 'true' if current_user.role=='admin' else 'false' | tojson }};
+
+  /* state */
+  let quotes   = [];
+  let editId   = null;
+  let deleteId = null;
+
+  /* fetch + render */
+  const load = () => fetch('/api/getQuotes')
+    .then(r=>r.json()).then(d=>{ quotes=d; draw(); });
+
+  function draw() {
+    grid.innerHTML = '';
+    quotes.forEach((q,i) => {
+      const card = document.createElement('div');
+      card.className = 'project-card';               // keep existing card styling
+      card.style.animationDelay = `${i*60}ms`;
+      card.dataset.id = q.id;
+
+      card.innerHTML = `
+        <div class="quote-text">“${q.quote}”</div>
+        <div class="quote-author">— ${q.author}</div>
+
+        ${isAdmin ? `
+        <div class="quote-actions">
+          <button class="action-btn edit-btn" title="Edit"><i data-feather="edit-2"></i></button>
+          <button class="action-btn delete-btn" title="Delete"><i data-feather="trash-2"></i></button>
+        </div>` : ''}
+      `;
+      grid.appendChild(card);
+    });
+    feather.replace();
+  }
+
+  /* modal helpers */
+  const openModal = (edit=false,q={})=>{
+    modal.classList.add('visible');
+    editId = edit ? q.id : null;
+    form.reset();
+    form.quote.value  = q.quote  || '';
+    form.author.value = q.author || '';
+    document.getElementById('modal-title').textContent = edit ? 'Edit Quote' : 'Add Quote';
+  };
+  const closeModal = ()=>{ modal.classList.remove('visible'); editId=null; };
+
+  /* confirm helpers */
+  const openConfirm  = id=>{ deleteId=id; confirmM.classList.add('visible'); };
+  const closeConfirm = ()=>{ deleteId=null; confirmM.classList.remove('visible'); };
+
+  /* grid clicks */
+  grid.addEventListener('click', e=>{
+    const card = e.target.closest('.project-card'); if(!card) return;
+    if(isAdmin && e.target.closest('.edit-btn')){
+      const q = quotes.find(x=>x.id===card.dataset.id);
+      return openModal(true,q);
+    }
+    if(isAdmin && e.target.closest('.delete-btn')){
+      return openConfirm(card.dataset.id);
+    }
+  });
+
+  /* buttons */
+  addBtn?.addEventListener('click', ()=>openModal());
+  closeBtn.addEventListener('click', closeModal);
+  document.getElementById('cancel-btn').onclick = closeModal;
+  document.getElementById('confirm-cancel').onclick = closeConfirm;
+
+  /* form submit */
+  form.addEventListener('submit', e=>{
+    e.preventDefault();
+    const fd=new FormData(form);
+    if(editId) fd.set('id', editId);
+
+    fetch(editId? '/api/changeQuote' : '/api/addQuote',{method:'POST',body:fd})
+      .then(r=>r.json()).then(()=>{ load(); closeModal(); });
+  });
+
+  /* confirm delete */
+  document.getElementById('confirm-ok').onclick = ()=>{
+    const fd=new FormData(); fd.append('id', deleteId);
+    fetch('/api/deleteQuote',{method:'POST',body:fd})
+      .then(r=>r.json()).then(()=>{ load(); closeConfirm(); });
+  };
+
+  /* kick off */
+  load();
+});
+</script>
+
+</body>
+</html>

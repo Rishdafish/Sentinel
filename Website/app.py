@@ -260,7 +260,7 @@ def delete_project():
     return jsonify({"message": "Project deleted successfully"})
 
 @app.route('/api/addQuote', methods=['POST'])
-def addQuote()
+def addQuote():
     quote = request.form.get("quote","").strip()
     author = request.form.get("author","").strip()
     if not quote or not author:
