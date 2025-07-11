@@ -1,7 +1,7 @@
 from werkzeug.security import check_password_hash, generate_password_hash
 import asyncio 
 import json
-from flask import Flask, render_template, request, session, redirect, url_for
+from flask import Flask, render_template, request, session, redirect, url_for, flash, current_app
 from flask_login import (
     LoginManager,
     UserMixin,
@@ -11,13 +11,12 @@ from flask_login import (
     current_user,
 )
 import flask_login
-
 from google.cloud import storage
 from datetime import timedelta
 import re
 
 app = Flask(__name__)
-app.secret_key = 'your_secret_key_here'
+app.secret_key = 'oj;kwfoaenv;kjjak;sdjk;ltj;lk23j4;lk23jl4kj1lkfdjl;k1j3kt89c0vasdfuio01'
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = "/loginPage"
@@ -25,22 +24,7 @@ login_manager.session_protection = "basic"
 
 
 
-def upload_string(bucket_name: str, destination_blob_name: str, contents: str):
-    """
-    Uploads a text string as a new blob.
-    """
-    client = storage.Client()
-    bucket = client.bucket(bucket_name)
-    blob = bucket.blob(destination_blob_name)
-
-    # upload_from_string auto-detects text vs. binary
-    blob.upload_from_string(contents, content_type='text/plain')
-    print(f"Uploaded text blob to gs://{bucket_name}/{destination_blob_name}")
-
 def upload_file(bucket_name: str, destination_blob_name: str, source_file_path: str):
-    """
-    Uploads a local file to GCS.
-    """
     client = storage.Client()
     bucket = client.bucket(bucket_name)
     blob = bucket.blob(destination_blob_name)
@@ -66,13 +50,29 @@ def upload_json(bucket_name: str, destination_blob_name: str, data: dict):
 class User(UserMixin):
     def __init__(self, emailID: str, password: str, token = None):
          self.id = emailID.lower().strip()
-         self.HashedPassword = generate_password_hash(password)
+         self.Password = password
          self.token = token
 
     def getPassword(self):
-        return self.HashedPassword
-    def get_id(self):
-        return super().get_id()
+        return self.Password
+
+    @classmethod
+    def get(cls, email: str):
+        client = storage.Client()
+        bucket = client.bucket("data_for_website")
+        blob   = bucket.blob(f"users/{email.lower().strip()}.json")
+
+        # Return None if there’s no such user
+        if not blob.exists():
+            return None
+
+        raw  = blob.download_as_text()
+        data = json.loads(raw)
+        return cls(
+            emailID = data["email"],
+            password= data["PasswordHash"],
+            token   = data.get("token")
+    )
 
 def verifyCreds(userEmail : str, password: str):
     client = storage.Client()
@@ -88,20 +88,19 @@ def verifyCreds(userEmail : str, password: str):
         return "Corrupted Data in Json"
     stored_email = data["email"]
     stored_hash  = data["PasswordHash"]
-
-    # Check both email match (optional) and password
     if stored_email == userEmail and check_password_hash(stored_hash, password):
         return "True"
     return "Incorrect Password"
 
-def registerUser(userThing : User):
-    if verifyCreds(userEmail=userThing.get_id(), password=userThing.getPassword()) == "Email Does not Exist":
-        client = storage.Client()
-        bucket = client.bucket('data_for_website')
-
 @login_manager.user_loader
 def load_user(user_id):
     return User.get(user_id)
+
+@app.route("/logout")
+def logout():
+    logout_user()
+    print("User Logged Out")
+    return redirect('MainPage.html')
 
 @app.route('/loginPage', methods=["POST", "GET"])
 def login():
@@ -113,17 +112,40 @@ def login():
         if verifyCreds(userEmail = formEmail, password = formPassword) != "Email Does not Exist":
             user = User(emailID = formEmail, password = formPassword)
             flask_login.login_user(user, remember=True, duration=(timedelta(days=365)))
-            return 
+            print("Login Successful")
+            return render_template('MainPage.html')
         
-@app.route('/registerPage', methods=['POST', 'GET'])
+@app.route('/registerPage', methods=['POST','GET'])
 def register():
     if request.method == ("POST"):
         formEmail = request.form.get('email')
         formPassword = request.form.get('password')
-        formToken = request.form.get('token')
+        if request.form.get('token') == "":
+            formToken = None
+        else: 
+            formToken = request.form.get('token') 
+        print('IS the storage working ')
         client = storage.Client()
+        print('possbily')
+        tempJson = {
+            "email": formEmail,
+            "PasswordHash": generate_password_hash(formPassword),
+            "token" : formToken
+        }
+        json_text = json.dumps(tempJson)
+        try: 
+            upload_json(data=tempJson, bucket_name='data_for_website', destination_blob_name=f'users/{formEmail.lower().strip()}.json')
+            flash("Account created! You can now log in.", "success")
+            user = User(emailID=formEmail, password=formPassword, token=formToken)
+            flask_login.login_user(user, remember=True, duration=(timedelta(days=365)))
+            return redirect(url_for('login'))
+        except Exception as e: 
+            current_app.logger.error(f"Failed to upload user blob: {e}")
+            print('Exception Error ')
+            flash("Oops, something went wrong when creating your account. Please try again.", "danger")
+    else: 
+        return render_template('Access.html')
 
-        
 
 @app.route('/')
 def home():
@@ -153,9 +175,6 @@ def GetBlogPage():
 @login_required
 def GetQuotesPage():
     return render_template('Quotes.html')
-
-
-
 
 if __name__ == "__main__":
     app.run(debug=True)

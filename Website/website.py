@@ -50,7 +50,8 @@ class WebSite():
         if projectStatus == "Developing" and self.currProject == "":
             self.currProject = project
         elif projectStatus == "Developing" and self.currProject != "":
-            if self.currProject["endDate"]
+            if self.currProject["endDate"]:
+                pass
 
     def deleteProject(self, projectID: int):
         for project in self.Projects:
