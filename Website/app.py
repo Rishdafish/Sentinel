@@ -1,3 +1,4 @@
+import uuid 
 import datetime
 from typing import List
 import os
@@ -26,6 +27,25 @@ login_manager.init_app(app)
 login_manager.login_view = "/loginPage"
 login_manager.session_protection = "basic"
 TOKEN = os.environ.get("WEBSITE_TOKEN_VALUE")
+client = storage.Client()
+print(client.project)
+bucket = client.bucket('data_for_website')
+
+
+
+def deleteBlob(bucket_name: str, blob_name: str):
+    """
+    Deletes a blob from the specified bucket.
+    """
+    client = storage.Client()
+    bucket = client.bucket(bucket_name)
+    blob = bucket.blob(blob_name)
+
+    if blob.exists():
+        blob.delete()
+        print(f"Deleted gs://{bucket_name}/{blob_name}")
+    else:
+        print(f"Blob gs://{bucket_name}/{blob_name} does not exist.")
 
 def upload_file(bucket_name: str, destination_blob_name: str, source_file_path: str):
     client = storage.Client()
@@ -50,15 +70,24 @@ def upload_json(bucket_name: str, destination_blob_name: str, data: dict):
     print(f"Uploaded JSON to gs://{bucket_name}/{destination_blob_name}")
 
 
-#The folder format should be like xyz/
 def getAllDir(folder: str) -> List[dict]:
     client = storage.Client()
     bucket = client.bucket('data_for_website')
-    blobs = bucket.list_blobs(prefix = folder)
+    blobs = bucket.list_blobs(prefix=folder)
     items = []
+
     for blob in blobs:
+        # skip directory markers
+        if blob.name.endswith('/'):
+            continue
         raw = blob.download_as_text()
-        data = json.load(raw)
+        if not raw.strip():
+            continue
+        try:
+            data = json.loads(raw)
+        except json.JSONDecodeError:
+            # not valid JSON → skip
+            continue
         items.append(data)
     return items
 
@@ -165,39 +194,70 @@ def register():
 def getAllProjects():
     return jsonify(getAllDir('Projects/'))
 
-
-@app.route('/api/projects', methods=['POST'])
+@app.route('/api/changeProject', methods=['POST'])
 @login_required
-def add_project():
-    # 2) Validate the fields you need
-    title= request.form.get('Title').strip()
-    description= request.form.get('Description').strip()
-    tags= request.form.get('tags',[])
-    tags = [tag.strip() for tag in tags]
-    Github= request.form.get('Github').strip()
-    progression= request.form.get('progression').strip()
-    imageFiles = request.files.get('images')
+def change_project():
+    project_id = request.form.get("id", "").strip()
+    title       = request.form.get("title", "").strip()
+    description = request.form.get("description", "").strip()
+    tags        = [t.strip() for t in request.form.get("tags", "").split(",") if t.strip()]
+    githubURL   = request.form.get("github", "").strip()
+    progression = request.form.get("progression", "").strip()
+    endDate = request.form.get("endDate", "").strip()
 
+    if not project_id:
+        return jsonify({"error": "Project ID is required"}), 400
 
-    filename = f"Projects/{title.replace(' ','_').lower()}.json"
-    payload = {
+    project_data = {
+        "id": project_id,
         "title": title,
         "description": description,
-        "created_by": current_user.get_id(),    # track who added it
-        "created_at": datetime.utcnow().isoformat() + "Z"
+        "tags": tags,
+        "github": githubURL,
+        "progression": progression,
+        'endDate': endDate
     }
-    try:
-        upload_json(
-            bucket_name='data_for_website',
-            destination_blob_name=filename,
-            data=payload
-        )
-    except Exception as e:
-        current_app.logger.error(f"Failed to save project: {e}")
-        return abort(500, "Could not save project")
+    
+    upload_json(bucket_name="data_for_website", destination_blob_name=f"Projects/{project_id}.json", data=project_data)
+    
+    return jsonify({"message": "Project updated successfully"})
 
-    # 5) Return success (201 Created)
-    return jsonify(payload), 201
+@app.route("/uploadProject", methods=["POST"])
+@login_required
+def upload_project():
+    title       = request.form.get("title", "").strip()
+    description = request.form.get("description", "").strip()
+    tags        = [t.strip() for t in request.form.get("tags", "").split(",") if t.strip()]
+    githubURL   = request.form.get("github", "").strip()
+    progression = request.form.get("progression", "").strip()
+    endDate    = request.form.get("endDate", "").strip()
+
+    project_id = str(uuid.uuid4())
+
+    project_data = {
+        "id": project_id,
+        "title": title,
+        "description": description,
+        "tags": tags,
+        "github": githubURL,
+        "progression": progression,
+        'endDate': endDate
+    }
+    upload_json(bucket_name="data_for_website", destination_blob_name=f"Projects/{project_id}.json", data=project_data)
+    return jsonify({"message": "Project uploaded successfully", "id": project_id})
+
+@app.route('/api/deleteProject', methods=['POST'])
+@login_required
+def delete_project():
+    project_id = request.form.get("id", "").strip()
+    
+    if not project_id:
+        return jsonify({"error": "Project ID is required"}), 400
+
+    # Delete the project blob
+    deleteBlob(bucket_name="data_for_website", blob_name=f"Projects/{project_id}.json")
+    
+    return jsonify({"message": "Project deleted successfully"})
 
 @app.route('/')
 def home():
