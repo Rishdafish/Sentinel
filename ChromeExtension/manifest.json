@@ -1,27 +1,19 @@
 {
   "manifest_version": 3,
-  "name": "Google Search Cleaner",
+  "name": "FocusBlocker",
   "version": "1.0",
-  "description": "Blocks unwanted information panels and suggestions from Google search results",
-  
   "permissions": [
+    "tabs",
     "activeTab"
   ],
-  
+  "background": {
+    "service_worker": "background.js"
+  },
   "content_scripts": [
     {
-      "matches": [
-        "*://www.google.com/search*",
-        "*://google.com/search*"
-      ],
-      "js": ["content.js"],
-      "css": ["styles.css"],
-      "run_at": "document_start"
+      "matches": ["<all_urls>"],
+      "run_at": "document_idle",
+      "js": ["content.js"]
     }
-  ],
-  
-  "action": {
-    "default_popup": "popup.html",
-    "default_title": "Google Search Cleaner"
-  }
+  ]
 }

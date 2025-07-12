@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>Blog</title>
+
+  <!-- fonts / css -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles/BlogPage.css') }}">
+  
+  <!-- feather icons -->
+  <script src="https://unpkg.com/feather-icons"></script>
+</head>
+<body>
+
+<!--────────────── minimalist "home" link ──────────────-->
+<a href="{{ url_for('home') }}" class="home-link" title="Home">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+    <polyline points="9,22 9,12 15,12 15,22"></polyline>
+  </svg>
+</a>
+
+<!--────────────── page header ───────────-->
+<h1 class="page-title">Blog</h1>
+<p class="page-subtitle">Thoughts, insights, and experiences from my journey in technology</p>
+
+<!--────────────── grid container ──────────────────────-->
+<div id="blog-grid" class="blog-grid"></div>
+
+{% if current_user.role == 'admin' %}
+<button id="add-blog-btn" class="add-project-btn" title="Add Blog Post">
+  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="12" y1="5" x2="12" y2="19"></line>
+    <line x1="5" y1="12" x2="19" y2="12"></line>
+  </svg>
+</button>
+{% endif %}
+
+<!--────────────── blog modal ─────────────────────────-->
+<div id="blog-modal" class="modal-overlay">
+  <div class="modal-content">
+    <button id="close-modal-btn" class="close-button">&times;</button>
+    <h2 id="modal-title">Add Blog Post</h2>
+
+    <form id="blog-form" class="project-form">
+      <input type="hidden" id="blog-id" />
+      <div class="form-group">
+        <label class="form-label" for="title">Post Title</label>
+        <input id="title"
+               name="title"               
+               class="form-input"
+               placeholder="Enter your blog post title..."
+               required />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="content">Content</label>
+        <textarea id="content"
+                  name="content"               
+                  class="form-textarea"
+                  placeholder="Write your blog post content here..."
+                  required></textarea>
+      </div>
+
+      <div class="form-buttons">
+        <button id="cancel-btn" type="button" class="form-button secondary">Cancel</button>
+        <button type="submit" class="form-button primary">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!--────────────── confirm modal ───────────────────────-->
+<div id="confirm-modal" class="modal-overlay">
+  <div class="modal-content">
+    <h2>Delete blog post?</h2>
+    <p>This cannot be undone.</p>
+    <div class="form-buttons">
+      <button id="confirm-cancel" class="form-button secondary">Cancel</button>
+      <button id="confirm-ok" class="form-button danger">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!--────────────── main script ─────────────────────────-->
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  /* refs */
+  const grid      = document.getElementById('blog-grid');
+  const addBtn    = document.getElementById('add-blog-btn');
+  const modal     = document.getElementById('blog-modal');
+  const confirmM  = document.getElementById('confirm-modal');
+  const form      = document.getElementById('blog-form');
+  const closeBtn  = document.getElementById('close-modal-btn');
+
+  /* jinja-injected flag */
+  const isAdmin = {{ (current_user.role == 'admin') | tojson }};
+
+  /* state */
+  let blogPosts   = [];
+  let editId   = null;
+  let deleteId = null;
+
+  /* format content preview */
+  function getPreview(content, maxLength = 150) {
+    if (content.length <= maxLength) return content;
+    return content.substring(0, maxLength).trim() + '...';
+  }
+
+  /* format date and time display */
+  function formatDateTime(dateAndTime) {
+    const date = new Date(dateAndTime);
+    const dateStr = date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    const timeStr = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+    return { date: dateStr, time: timeStr };
+  }
+  /* fetch data */
+  function load() {
+    fetch('/api/getBlogPosts')
+      .then(r => {
+        if (!r.ok) throw new Error('Failed to fetch blog posts');
+        return r.json();
+      })
+      .then(data => {
+        // Sort posts by dateAndTime descending (newest first)
+        blogPosts = data.sort((a, b) => new Date(b.dateAndTime) - new Date(a.dateAndTime));
+        draw();
+      })
+      .catch(err => {
+        console.error('Error loading blog posts:', err);
+        grid.innerHTML = '<p class="error-message">Failed to load blog posts. Please try again later.</p>';
+      });
+  }
+
+  function draw() {
+    // ... (rest of your draw function)
+
+  function draw() {
+    grid.innerHTML = '';
+    blogPosts.forEach((post, i) => {
+      const card = document.createElement('div');
+      card.className = 'project-card';
+      card.style.animationDelay = `${i * 60}ms`;
+      card.dataset.id = post.id;
+
+      const preview = getPreview(post.content);
+      const showReadMore = post.content.length > 150;
+      
+      // Format date and time for display
+      const { date, time } = formatDateTime(post.dateAndTime);
+
+      card.innerHTML = `
+        <div class="blog-header">
+          <div>
+            <div class="blog-title">${post.Title}</div>
+            <div class="blog-meta">
+              <div class="blog-date">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="16" y1="2" x2="16" y2="6"></line>
+                  <line x1="8" y1="2" x2="8" y2="6"></line>
+                  <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+                <span>${date}</span>
+              </div>
+              <div class="blog-time">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <polyline points="12,6 12,12 16,14"></polyline>
+                </svg>
+                <span>${time}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="blog-preview">
+          ${preview}
+          ${showReadMore ? '<button class="read-more-btn">Read more</button>' : ''}
+        </div>
+
+        <div class="blog-content">
+          ${post.content}
+        </div>
+
+        ${isAdmin ? `
+        <div class="blog-actions">
+          <button class="action-btn edit-btn" title="Edit">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2-2v-7"></path>
+              <path d="m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+            </svg>
+          </button>
+          <button class="action-btn delete-btn" title="Delete">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="3,6 5,6 21,6"></polyline>
+              <path d="m19,6v14a2,2 0 0,1-2,2H7a2,2 0 0,1-2-2V6m3,0V4a2,2 0 0,1,2-2h4a2,2 0 0,1,2,2v2"></path>
+              <line x1="10" y1="11" x2="10" y2="17"></line>
+              <line x1="14" y1="11" x2="14" y2="17"></line>
+            </svg>
+          </button>
+        </div>` : ''}
+      `;
+      grid.appendChild(card);
+    });
+    // Remove the feather.replace() call since we're using inline SVGs now
+  }
+
+  /* modal helpers */
+  const openModal = (edit = false, post = {}) => {
+    modal.classList.add('visible');
+    editId = edit ? post.id : null;
+    form.reset();
+    form.title.value = post.Title || '';
+    form.content.value = post.content || '';
+    document.getElementById('modal-title').textContent = edit ? 'Edit Blog Post' : 'Add Blog Post';
+  };
+  const closeModal = () => { modal.classList.remove('visible'); editId = null; };
+
+  /* confirm helpers */
+  const openConfirm = id => { deleteId = id; confirmM.classList.add('visible'); };
+  const closeConfirm = () => { deleteId = null; confirmM.classList.remove('visible'); };
+
+  /* grid clicks */
+  grid.addEventListener('click', e => {
+    const card = e.target.closest('.project-card');
+    if (!card) return;
+
+    if (e.target.closest('.read-more-btn')) {
+      e.preventDefault();
+      card.classList.add('expanded');
+      const readMoreBtn = card.querySelector('.read-more-btn');
+      if (readMoreBtn) {
+        readMoreBtn.style.display = 'none';
+      }
+      return;
+    }
+
+    if (isAdmin && e.target.closest('.edit-btn')) {
+      const post = blogPosts.find(x => x.id === card.dataset.id);
+      return openModal(true, post);
+    }
+    if (isAdmin && e.target.closest('.delete-btn')) {
+      return openConfirm(card.dataset.id);
+    }
+
+    // Click anywhere else on card to expand/collapse
+    if (!e.target.closest('.blog-actions')) {
+      card.classList.toggle('expanded');
+      const readMoreBtn = card.querySelector('.read-more-btn');
+      if (readMoreBtn && card.classList.contains('expanded')) {
+        readMoreBtn.style.display = 'none';
+      } else if (readMoreBtn && !card.classList.contains('expanded')) {
+        readMoreBtn.style.display = 'inline';
+      }
+    }
+  });
+
+  /* buttons */
+  addBtn?.addEventListener('click', () => openModal());
+  closeBtn.addEventListener('click', closeModal);
+  document.getElementById('cancel-btn').onclick = closeModal;
+  document.getElementById('confirm-cancel').onclick = closeConfirm;
+
+  /* form submit */
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    const formData = new FormData();
+    
+    formData.append('Title', form.title.value);
+    formData.append('content', form.content.value);
+
+    if (editId) {
+      // Edit existing post - preserve original dateAndTime
+      const existingPost = blogPosts.find(p => p.id === editId);
+      formData.append('id', editId);
+      formData.append('date', existingPost.dateAndTime); // Keep original timestamp
+      
+      fetch('/api/changeBlogPosts', { method: 'POST', body: formData })
+        .then(r => r.json())
+        .then(() => { 
+          load(); 
+          closeModal(); 
+        })
+        .catch(err => console.error('Error updating blog post:', err));
+    } else {
+      // Add new post - create new timestamp
+      const now = new Date().toISOString();
+      formData.append('date', now);
+      
+      fetch('/api/addBlogPost', { method: 'POST', body: formData })
+        .then(r => r.json())
+        .then(() => { 
+          load(); 
+          closeModal(); 
+        })
+        .catch(err => console.error('Error adding blog post:', err));
+    }
+  });
+
+  /* confirm delete */
+  document.getElementById('confirm-ok').onclick = () => {
+    const formData = new FormData();
+    formData.append('id', deleteId);
+    
+    fetch('/api/deleteBlogPost', { method: 'POST', body: formData })
+      .then(r => r.json())
+      .then(() => { 
+        load(); 
+        closeConfirm(); 
+      })
+      .catch(err => console.error('Error deleting blog post:', err));
+  };
+
+  /* kick off */
+  load();
+}); // Ensure this closing brace corresponds to an opening brace in the code above
+</script>
+
+</body>
+</html>

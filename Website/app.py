@@ -3,6 +3,7 @@ from openai import OpenAI
 import uuid 
 import datetime
 from typing import List
+from flask_cors import cross_origin
 import os
 from werkzeug.security import check_password_hash, generate_password_hash
 import asyncio 
@@ -326,6 +327,61 @@ def changeQuote():
     return jsonify({"message": "Quote updated successfully"})
 
 
+
+@app.route('/api/addBlogPost', methods=['POST'])
+def addBlogPost():
+    Title = request.form.get("Title","").strip()
+    content = request.form.get("content","").strip()
+    dateAndTime = request.form.get("date","").strip()
+    if not Title or not content or not dateAndTime:
+        return jsonify({"error": "DateAndTime and content and Title are required"}), 400
+    blog_id = str(uuid.uuid4())
+    blog_data = {
+        "id": blog_id,
+        "Title": Title,
+        "content": content,
+        "dateAndTime": dateAndTime
+
+    }
+    upload_json(bucket_name="data_for_website", destination_blob_name=f"BlogPosts/{blog_id}.json", data=blog_data)
+    return jsonify({"message": "Blog Post added successfully", "id": blog_id})
+
+@app.route('/api/getBlogPosts', methods=['GET'])
+def getBlogPosts():
+    BlogPosts = getAllDir('BlogPosts/')
+    return jsonify(BlogPosts)
+
+@app.route('/api/deleteBlogPost', methods=['POST'])
+def deleteBlogPosts():
+    blog_id = request.form.get("id", "").strip()
+    if not blog_id:
+        return jsonify({"error": "Blog ID is required"}), 400
+    deleteBlob(bucket_name="data_for_website", blob_name=f"BlogPosts/{blog_id}.json")
+    return jsonify({"message": "Blog Post deleted successfully"})
+
+@app.route('/api/changeBlogPosts', methods=['POST'])
+def changeBlogPost():
+    blog_id = request.form.get("id", "").strip()
+    Title = request.form.get("Title", "").strip()
+    content = request.form.get("content", "").strip()
+    dateAndTime = request.form.get("date", "").strip()
+
+    if not blog_id:
+        return jsonify({"error": "Blog ID is required"}), 400
+
+    blog_data = {
+        "id": blog_id,
+        "Title": Title,
+        "content": content,
+        "dateAndTime": dateAndTime
+    }
+    
+    upload_json(bucket_name="data_for_website", destination_blob_name=f"BlogPosts/{blog_id}.json", data=blog_data)
+    
+    return jsonify({"message": "Blog Post updated successfully"})
+
+
+
 @app.route('/')
 def home():
     return render_template("MainPage.html")
@@ -355,16 +411,22 @@ def GetBlogPage():
 def GetQuotesPage():
     return render_template('Quotes.html')
 
-def checkWebsite(website):
-    #website = request.form.get("website", "").strip()
-    #if not website:
-    #    return jsonify({"error": "Website URL is required"}), 400
-    allowedWebsites = ['console.cloud.google.com', 'stackoverflow.com', 'leetcode.com','https://ocw.mit.edu','khanacademy.org',]
+
+@app.route('/api/ChromeExt/checkWebsite', methods=['POST'])
+@cross_origin()
+def checkWebsite():
+    print('recieved request')
+    website = request.form.get("website", "").strip()
+    if not website:
+        return jsonify({"error": "Website URL is required"}), 400
+    allowedWebsites = ['console.cloud.google.com', 'stackoverflow.com', 'leetcode.com','https://ocw.mit.edu','khanacademy.org','https://www.nature.com','https://www.science.org','http://127.0.0.1:5000']
     prompt = f"""You are a URL classifier that enforces my personal “focus” policy.  Given one URL (or domain) as input, return **only** the word `true` if it’s allowed, or `false` if it should be blocked.  No other words, punctuation, or formatting.
         Rules:
         1. **Allow** (return `true`) only when the URL points to:
         - Official documentation (e.g. cloud provider docs, API references).
+        -http://127.0.0.1:5000 anything that is locally hosted
         - University course sites (e.g. MIT OpenCourseWare, Berkeley OCW).
+        - Research Paper Sites (e.g. arXiv, ResearchGate).
         - Individual GitHub/GitLab/etc. repositories **but not user profiles**.
         2. **Block** (return `false`) when the URL is about:
         - Any person’s profile, bio, or general “about” page (Elon Musk, Yann LeCun, Mark Zuckerberg, Paul Graham, etc.).
@@ -373,7 +435,7 @@ def checkWebsite(website):
         - Company homepages or stock/financial pages (Palantir, Tesla, Y Combinator, etc.).
         - Entertainment or general-interest sites (movie pages, actor/singer fan pages, Wikipedia, IMDb, music sites).
         - Any general-question or “information-gathering” page not strictly documentation or course material.
-        - Any page that is not strictly documentation, course material, or a specific repository.
+        - Any page that is not strictly documentation, course material, or a specific repository, or Scientific papers.
         3. If the URL fits multiple rules, **blocking takes priority**.
         4. Return **only** `true` or `false`.
 
@@ -386,24 +448,18 @@ def checkWebsite(website):
 
         **Now classify:**
         {website}"""
-    
     if extract_domain(website) in allowedWebsites:
         print("Website is from list")
-        return 'true'
-        #return jsonify({"response": "true"})
+        return jsonify({"response": "true"})
     response = llm_call(prompt) 
     if not response:
-        #return jsonify({"error": "No response from LLM"}), 500
-        print("No response from LLM")
+        return jsonify({"error": "No response from LLM"}), 500
     if response.lower() == "false":
         pass 
     #return jsonify({"response": response})
     print("Response from LLM: ", response)
+
     return response
-
-
-checkWebsite("https://www.google.com/search?q=elon+musk&rlz=1C5CHFA_enUS1099US1099&oq=elon&gs_lcrp=EgZjaHJvbWUqDQgAEAAY4wIYsQMYgAQyDQgAEAAY4wIYsQMYgAQyCggBEC4YsQMYgAQyBggCEEUYOzIGCAMQRRg5MgYIBBBFGDsyBggFEEUYQDIGCAYQRRg8MgYIBxBFGDzSAQgxNzI2ajBqN6gCCLACAfEFvWEaHsyON6PxBb1hGh7Mjjej&sourceid=chrome&ie=UTF-8&udm=14")
-
 
 
 if __name__ == "__main__":

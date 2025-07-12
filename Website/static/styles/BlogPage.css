@@ -1,0 +1,385 @@
+body {
+    background-color: #ffffff;
+    color: #333;
+    font-family: 'Inter', sans-serif;
+    margin: 0;
+    line-height: 1.6;
+    cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6" fill="black"/></svg>') 12 12, auto;
+}
+
+a, button, .project-card, .form-input, .form-textarea, .form-select, .tag-remove {
+    cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28"><circle cx="14" cy="14" r="10" fill="none" stroke="black" stroke-width="2.5"/></svg>') 14 14, pointer;
+}
+
+.page-title { 
+    text-align: center; 
+    margin-top: 5rem; 
+    font-size: 3rem; 
+    font-weight: 800; 
+    margin-bottom: 1rem;
+}
+
+.page-subtitle {
+    text-align: center;
+    color: #666;
+    font-size: 1.1rem;
+    margin-bottom: 4rem;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.home-link { 
+    position: fixed; 
+    top: 1.5rem; 
+    left: 1.5rem; 
+    color: #111; 
+    opacity: .7;
+    text-decoration: none;
+}
+.home-link:hover { opacity: 1; }
+
+#blog-grid {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2.5rem;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 2rem;
+}
+
+.project-card {
+    position: relative;
+    width: 100%;
+    max-width: 65rem;
+    border: 3px solid #e9ecef;
+    box-shadow: 0 8px 30px -10px rgba(0,0,0,.12);
+    border-radius: 16px;
+    padding: 30px;
+    background: #f8f9fa;
+    opacity: 0;
+    animation: fadeInUp .55s ease-out forwards;
+    transition: all 0.3s ease;
+}
+
+.project-card:hover {
+    border-color: #000;
+    transform: translateY(-2px);
+}
+
+.blog-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 8px;
+}
+
+.blog-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #333;
+    margin: 0 0 8px 0;
+}
+
+.blog-meta {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    color: #666;
+    font-size: 0.9rem;
+    margin-bottom: 8px;
+}
+
+.blog-date, .blog-time {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.blog-date svg, .blog-time svg {
+    width: 14px;
+    height: 14px;
+}
+
+.blog-preview {
+    color: #555;
+    line-height: 1.6;
+    transition: all 0.3s ease;
+}
+
+.project-card.expanded .blog-preview {
+    display: none;
+}
+
+.blog-content {
+    display: none;
+    color: #555;
+    line-height: 1.7;
+}
+
+.project-card.expanded .blog-content {
+    display: block;
+    animation: fadeIn 0.3s ease;
+}
+
+.read-more-btn {
+    background: none;
+    border: none;
+    color: #333;
+    text-decoration: underline;
+    font-weight: 600;
+    padding: 0;
+    font-size: 0.9rem;
+    margin-left: 4px;
+}
+
+.read-more-btn:hover {
+    color: #007bff;
+}
+
+.blog-actions {
+    position: absolute;
+    top: 1.2rem;
+    right: 1.2rem;
+    display: flex;
+    gap: .75rem;
+}
+
+.action-btn {
+    background: none;
+    border: none;
+    padding: 4px;
+    color: #9ca3af;
+    transition: color 0.2s ease-in-out;
+}
+
+.action-btn svg {
+    width: 16px;
+    height: 16px;
+    pointer-events: none;
+}
+
+.action-btn.edit-btn:hover {
+    color: #3b82f6;
+}
+
+.action-btn.delete-btn:hover {
+    color: #ef4444;
+}
+
+.add-project-btn {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    width: 60px;
+    height: 60px;
+    background: #333;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    transition: all 0.3s ease;
+    z-index: 50;
+}
+
+.add-project-btn:hover {
+    background: #555;
+    transform: scale(1.1);
+}
+
+.add-project-btn svg {
+    width: 28px;
+    height: 28px;
+}
+
+/* Modal Styles */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0s 0.3s;
+}
+
+.modal-overlay.visible {
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0.3s ease;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 16px;
+    padding: 32px;
+    width: 100%;
+    max-width: 600px;
+    margin: 20px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+    position: relative;
+    max-height: 90vh;
+    overflow-y: auto;
+    transform: scale(0.95);
+    transition: transform 0.3s ease;
+}
+
+.modal-overlay.visible .modal-content {
+    transform: scale(1);
+}
+
+.modal-content h2 {
+    font-weight: 700;
+    font-size: 1.5rem;
+    margin: 0 0 24px 0;
+}
+
+.project-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.form-label {
+    font-weight: 600;
+    color: #333;
+    font-size: 0.9rem;
+}
+
+.form-input, .form-textarea {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 12px 16px;
+    color: #333;
+    font-size: 0.95rem;
+    transition: all 0.2s ease;
+    width: 100%;
+    box-sizing: border-box;
+    font-family: 'Inter', sans-serif;
+}
+
+.form-input:focus, .form-textarea:focus {
+    outline: none;
+    border-color: #333;
+    background: white;
+    box-shadow: 0 0 0 2px rgba(51, 51, 51, 0.1);
+}
+
+.form-textarea {
+    resize: vertical;
+    min-height: 120px;
+}
+
+.form-buttons {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 24px;
+}
+
+.form-button {
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    transition: all 0.2s ease;
+    border: none;
+}
+
+.form-button.primary {
+    background: #333;
+    color: white;
+}
+
+.form-button.primary:hover {
+    background: #555;
+}
+
+.form-button.secondary {
+    background: #e9ecef;
+    color: #333;
+}
+
+.form-button.secondary:hover {
+    background: #dee2e6;
+}
+
+.form-button.danger {
+    background: #ef4444;
+    color: white;
+}
+
+.form-button.danger:hover {
+    background: #dc2626;
+}
+
+.close-button {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: none;
+    border: none;
+    color: #aaa;
+    font-size: 1.5rem;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+}
+
+.close-button:hover {
+    background: #f1f1f1;
+    color: #333;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@media (max-width: 768px) {
+    #blog-grid {
+        padding: 0 1rem;
+    }
+    
+    .page-title {
+        font-size: 2.5rem;
+    }
+    
+    .project-card {
+        padding: 20px;
+    }
+}
