@@ -1,17 +1,27 @@
 {
-    "manifest_version": 3,
-    "name": "FocusGuard",
-    "version": "0.1.0",
-    "permissions": [
-      "history",
-      "storage",
-      "tabs",
-      "scripting"
-    ],
-    "background": {
-      "service_worker": "background.js"
-    },
-    "action": {
-      "default_popup": "popup.html"
+  "manifest_version": 3,
+  "name": "Google Search Cleaner",
+  "version": "1.0",
+  "description": "Blocks unwanted information panels and suggestions from Google search results",
+  
+  "permissions": [
+    "activeTab"
+  ],
+  
+  "content_scripts": [
+    {
+      "matches": [
+        "*://www.google.com/search*",
+        "*://google.com/search*"
+      ],
+      "js": ["content.js"],
+      "css": ["styles.css"],
+      "run_at": "document_start"
     }
+  ],
+  
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Google Search Cleaner"
   }
+}

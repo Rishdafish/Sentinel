@@ -1,3 +1,4 @@
+from openai import OpenAI
 import uuid 
 import datetime
 from typing import List
@@ -18,6 +19,13 @@ import flask_login
 from google.cloud import storage
 from datetime import timedelta
 import re
+from transformers import AutoTokenizer, AutoModelForCausalLM
+model_name = "deepseek-ai/deepseek-coder-6.7b-base"
+local_dir = "./models/deepseek/"
+
+# Download to local directory
+tokenizer = AutoTokenizer.from_pretrained(model_name, cache_dir=local_dir)
+model = AutoModelForCausalLM.from_pretrained(model_name, cache_dir=local_dir)
 
 
 app = Flask(__name__)
@@ -30,6 +38,24 @@ TOKEN = os.environ.get("WEBSITE_TOKEN_VALUE")
 client = storage.Client()
 print(client.project)
 bucket = client.bucket('data_for_website')
+
+
+'''
+
+
+
+def llm_call(prompt: str) -> str:
+    client = OpenAI(api_key="<DeepSeek API Key>", base_url="https://api.deepseek.com")
+    response = client.chat.completions.create(
+        model="deepseek-chat",
+        messages=[
+            {"role": "system", "content": "You are a helpful assistant"},
+        ],
+        stream=False
+    )
+    return(response.choices[0].message.content)
+ '''   
+
 
 
 
@@ -335,6 +361,11 @@ def GetBlogPage():
 @login_required
 def GetQuotesPage():
     return render_template('Quotes.html')
+
+@app.route('/api/chromeExtension/request', methods=['GET'])
+def chrome_extension_request():
+    pass 
+
 
 if __name__ == "__main__":
     app.run(debug=True)
