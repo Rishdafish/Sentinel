@@ -1,3 +1,4 @@
+from urllib.parse import urlparse
 from openai import OpenAI
 import uuid 
 import datetime
@@ -19,14 +20,6 @@ import flask_login
 from google.cloud import storage
 from datetime import timedelta
 import re
-from transformers import AutoTokenizer, AutoModelForCausalLM
-model_name = "deepseek-ai/deepseek-coder-6.7b-base"
-local_dir = "./models/deepseek/"
-
-# Download to local directory
-tokenizer = AutoTokenizer.from_pretrained(model_name, cache_dir=local_dir)
-model = AutoModelForCausalLM.from_pretrained(model_name, cache_dir=local_dir)
-
 
 app = Flask(__name__)
 app.secret_key = 'oj;kwfoaenv;kjjak;sdjk;ltj;lk23j4;lk23jl4kj1lkfdjl;k1j3kt89c0vasdfuio01'
@@ -35,28 +28,28 @@ login_manager.init_app(app)
 login_manager.login_view = "/loginPage"
 login_manager.session_protection = "basic"
 TOKEN = os.environ.get("WEBSITE_TOKEN_VALUE")
-client = storage.Client()
-print(client.project)
-bucket = client.bucket('data_for_website')
-
-
-'''
-
-
 
 def llm_call(prompt: str) -> str:
-    client = OpenAI(api_key="<DeepSeek API Key>", base_url="https://api.deepseek.com")
+    client = OpenAI(api_key="sk-9847c361208c4301a20d5f5225d41516", base_url="https://api.deepseek.com")
     response = client.chat.completions.create(
         model="deepseek-chat",
         messages=[
-            {"role": "system", "content": "You are a helpful assistant"},
+            {"role": "user", "content": prompt},
         ],
         stream=False
     )
     return(response.choices[0].message.content)
- '''   
 
 
+def extract_domain(url: str) -> str:
+    """
+    Given any URL, return its hostname (e.g. 'huggingface.co'),
+    stripped of port numbers or credentials.
+    """
+    parsed = urlparse(url)
+    # parsed.netloc might be "user:pass@host:port"
+    host = parsed.hostname or ""
+    return host.lower()
 
 
 def deleteBlob(bucket_name: str, blob_name: str):
@@ -362,10 +355,57 @@ def GetBlogPage():
 def GetQuotesPage():
     return render_template('Quotes.html')
 
-@app.route('/api/chromeExtension/request', methods=['GET'])
-def chrome_extension_request():
-    pass 
+def checkWebsite(website):
+    #website = request.form.get("website", "").strip()
+    #if not website:
+    #    return jsonify({"error": "Website URL is required"}), 400
+    allowedWebsites = ['console.cloud.google.com', 'stackoverflow.com', 'leetcode.com','https://ocw.mit.edu','khanacademy.org',]
+    prompt = f"""You are a URL classifier that enforces my personal “focus” policy.  Given one URL (or domain) as input, return **only** the word `true` if it’s allowed, or `false` if it should be blocked.  No other words, punctuation, or formatting.
+        Rules:
+        1. **Allow** (return `true`) only when the URL points to:
+        - Official documentation (e.g. cloud provider docs, API references).
+        - University course sites (e.g. MIT OpenCourseWare, Berkeley OCW).
+        - Individual GitHub/GitLab/etc. repositories **but not user profiles**.
+        2. **Block** (return `false`) when the URL is about:
+        - Any person’s profile, bio, or general “about” page (Elon Musk, Yann LeCun, Mark Zuckerberg, Paul Graham, etc.).
+        - Any company’s homepage, stock page, or general information (Google, Facebook, Amazon, etc.).
+        - News, biographies, or Wikipedia-style information pages about people.
+        - Company homepages or stock/financial pages (Palantir, Tesla, Y Combinator, etc.).
+        - Entertainment or general-interest sites (movie pages, actor/singer fan pages, Wikipedia, IMDb, music sites).
+        - Any general-question or “information-gathering” page not strictly documentation or course material.
+        - Any page that is not strictly documentation, course material, or a specific repository.
+        3. If the URL fits multiple rules, **blocking takes priority**.
+        4. Return **only** `true` or `false`.
+
+        **Example inputs → outputs**  
+        - `https://cloud.google.com/functions/docs` → `true`  
+        - `https://github.com/rishabhiry/my-project` → `true`  
+        - `https://github.com/rishabhiry` → `false`  
+        - `https://en.wikipedia.org/wiki/Elon_Musk` → `false`  
+        - `https://www.imdb.com/title/tt0137523/` → `false`
+
+        **Now classify:**
+        {website}"""
+    
+    if extract_domain(website) in allowedWebsites:
+        print("Website is from list")
+        return 'true'
+        #return jsonify({"response": "true"})
+    response = llm_call(prompt) 
+    if not response:
+        #return jsonify({"error": "No response from LLM"}), 500
+        print("No response from LLM")
+    if response.lower() == "false":
+        pass 
+    #return jsonify({"response": response})
+    print("Response from LLM: ", response)
+    return response
+
+
+checkWebsite("https://www.google.com/search?q=elon+musk&rlz=1C5CHFA_enUS1099US1099&oq=elon&gs_lcrp=EgZjaHJvbWUqDQgAEAAY4wIYsQMYgAQyDQgAEAAY4wIYsQMYgAQyCggBEC4YsQMYgAQyBggCEEUYOzIGCAMQRRg5MgYIBBBFGDsyBggFEEUYQDIGCAYQRRg8MgYIBxBFGDzSAQgxNzI2ajBqN6gCCLACAfEFvWEaHsyON6PxBb1hGh7Mjjej&sourceid=chrome&ie=UTF-8&udm=14")
+
 
 
 if __name__ == "__main__":
     app.run(debug=True)
+
