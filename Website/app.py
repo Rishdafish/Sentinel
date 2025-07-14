@@ -19,7 +19,7 @@ from flask_login import (
 )
 import flask_login
 from google.cloud import storage
-from datetime import timedelta
+from datetime import timedelta, datetime
 import re
 
 app = Flask(__name__)
@@ -380,8 +380,6 @@ def changeBlogPost():
     
     return jsonify({"message": "Blog Post updated successfully"})
 
-
-
 @app.route('/')
 def home():
     return render_template("MainPage.html")
@@ -427,6 +425,8 @@ def checkWebsite():
         -http://127.0.0.1:5000 anything that is locally hosted
         - University course sites (e.g. MIT OpenCourseWare, Berkeley OCW).
         - Research Paper Sites (e.g. arXiv, ResearchGate).
+        -OpenAI, DeepSeek, gemini, claude, and other AI companies APIs 
+        - Educational platforms (e.g. Khan Academy, Coursera, edX, Raspberry PI).
         - Individual GitHub/GitLab/etc. repositories **but not user profiles**.
         2. **Block** (return `false`) when the URL is about:
         - Any person’s profile, bio, or general “about” page (Elon Musk, Yann LeCun, Mark Zuckerberg, Paul Graham, etc.).
@@ -434,9 +434,8 @@ def checkWebsite():
         - News, biographies, or Wikipedia-style information pages about people.
         - Company homepages or stock/financial pages (Palantir, Tesla, Y Combinator, etc.).
         - Entertainment or general-interest sites (movie pages, actor/singer fan pages, Wikipedia, IMDb, music sites).
-        - Any general-question or “information-gathering” page not strictly documentation or course material.
         - Any page that is not strictly documentation, course material, or a specific repository, or Scientific papers.
-        3. If the URL fits multiple rules, **blocking takes priority**.
+        3. If the URL fits multiple rules, ** not blocking takes priority**.
         4. Return **only** `true` or `false`.
 
         **Example inputs → outputs**  
@@ -445,6 +444,8 @@ def checkWebsite():
         - `https://github.com/rishabhiry` → `false`  
         - `https://en.wikipedia.org/wiki/Elon_Musk` → `false`  
         - `https://www.imdb.com/title/tt0137523/` → `false`
+        -' `https://www.nature.com/articles/s41586-020-2649-2` → `true`
+        - `https://khanacademy.org` → `true`
 
         **Now classify:**
         {website}"""
@@ -462,6 +463,30 @@ def checkWebsite():
     return response
 
 
+@app.route('/api/AddBadClips', methods=['POST'])
+def AddBadClip():
+    """
+    Returns a list of all the clips in the bucket
+    """
+    video = request.files.get('video')
+    os.makedirs('BadClips', exist_ok=True)
+    if video:
+        video.save(os.path.join('BadClips', video.filename))
+        print(f"Video saved as {video.filename}")
+    else:
+        print("No video file provided")
+    if not video:
+        return jsonify({"error": "No video file provided"}), 400
+    
+    now = datetime.now()
+    timestamp = now.strftime("%Y-%m-%d_%H-%M-%S")
+    client = storage.Client()
+    bucket = client.bucket('data_for_website')
+    upload_file(bucket_name='data_for_website', destination_blob_name=f'BadClips/{timestamp}.mp4', source_file_path=os.path.join('BadClips', video.filename))
+
+
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True, host='0.0.0.0', port=5000)
+
+
 
